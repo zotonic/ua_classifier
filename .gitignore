@@ -1,0 +1,9 @@
+*.swp
+*.beam
+erl_crash.dump
+ebin/ua_classifier.app
+coverage/*
+.DS_Store
+build
+*.xcodeproj
+.eunit/
