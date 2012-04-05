@@ -1,0 +1,10 @@
+{application, ua_classifier,
+ [
+  {description, "User Agent Classifier"},
+  {vsn, "0.1"},
+  {modules, []},
+  {applications, [kernel, stdlib]},
+  {registered, [ua_classifier]},
+  {mod, {ua_classifier_app, []}},
+  {env, []}
+]}.
