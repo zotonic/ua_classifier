@@ -1,7 +1,7 @@
 User-Agent classification using WeatherChannel's dClass and OpenDDR
 ===================================================================
 
-An implementation of the user agent classification made by WeatherChannel[1] using an Erlang NIF.
+An implementation of the user agent classification made by [WeatherChannel](https://github.com/TheWeatherChannel/dClass) using an Erlang NIF.
 
 
 The main interface is `ua_classifier:classify/1`.  It returns a property list with user agent properties from OpenDDR.
@@ -46,6 +46,3 @@ This library uses the ".dtree" file of dClass. It is placed in `priv/openddr.dtr
 The dtree file is loaded when the NIF is initialized and when the NIF is upgraded.
 
 
-
-  [1] https://github.com/TheWeatherChannel/dClass
- 
