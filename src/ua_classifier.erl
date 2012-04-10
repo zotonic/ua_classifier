@@ -1,132 +1,79 @@
 %% Copyright 2012 Marc Worrell
 %%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%%     http://www.apache.org/licenses/LICENSE-2.0
-%% 
+%% Licensed under the Apache License, Version 2.0 (the "License"); you may not
+%% use this file except in compliance with the License. You may obtain a copy of
+%% the License at
+%%
+%%  http://www.apache.org/licenses/LICENSE-2.0
+%%
 %% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%% distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+%% WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+%% License for the specific language governing permissions and limitations under
+%% the License.
+
+%% @doc A NIF implementation of WeatherChannel's dClass user-agent classifier.
 
 -module(ua_classifier).
 
--behaviour(gen_server).
--author('Marc Worrell <marc@worrell.nl>').
-
 -export([
-    start/0, 
-    start_link/0, 
-    stop/0,
-    
-    classify/1
+    init/0,
+    classify/1,
+    device_type/1
+]).
+-export_type([
+    device_type/0
 ]).
 
-%% gen_server callbacks
--export([
-    init/1, handle_call/3, handle_cast/2, handle_info/2, 
-    terminate/2, code_change/3
-]).
+-on_load(init/0).
 
--define(SERVER, ?MODULE).
--record(state, {}).
+-type device_type() :: text | phone | table | desktop.
 
--type ua_class() :: text | phone | tablet | desktop.
+-spec init() -> true | ok.
+init() ->
+    SoName = case code:priv_dir(?MODULE) of
+                {error, bad_name} ->
+                    case filelib:is_dir(filename:join(["..", "priv"])) of
+                        true ->
+                            filename:join(["..", "priv", "ua_classifier_nif"]);
+                        false ->
+                            filename:join(["priv", "ua_classifier_nif"])
+                    end;
+                Dir ->
+                    filename:join(Dir, "ua_classifier_nif")
+            end,
+    Dtree = list_to_binary(filename:join(filename:dirname(SoName), "openddr.dtree")),
+    catch erlang:load_nif(SoName, Dtree),
+    case erlang:system_info(otp_release) of
+        "R13B03" -> true;
+        _ -> ok
+    end.
 
-%%%----------------------------------------------------------------------
-%%% API
-%%%----------------------------------------------------------------------
-
-start() ->
-    gen_server:start({local, ?SERVER}, ?MODULE, [], []).
-
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-stop() ->
-    gen_server:call(?SERVER, stop).
-
-%% @doc Classify an UA string
--spec classify( UA :: iolist() | undefined ) -> ua_class().
-classify(undefined) ->
-    desktop;
-classify(UA) when is_binary(UA) ->
-    UAs = [
-        {phone, <<"iPhone">>},
-        {tablet, <<"iPad">>}
-    ],
-    case lists:dropwhile(
-                fun({_,X}) -> 
-                    binary:match(UA, X) =:= nomatch
-                end, 
-                UAs)
-    of
-        [{Class,_}|_] -> Class;
-        [] -> desktop
-    end;
-classify(UA) when is_list(UA) ->
-    classify(iolist_to_binary(UA)).
+%% @doc Check a user-agent string against the OpenDDR classifications.
+-spec classify( UserAgentString :: iolist() ) -> {ok, Properties :: list()} | {error, Reason :: term() }.
+classify(_UserAgent) ->
+    exit(ua_classifier_nif_not_loaded).
 
 
-%%%----------------------------------------------------------------------
-%%% Callback functions from gen_server
-%%%----------------------------------------------------------------------
+%% @doc Map a list of user-agent properties (as returned by classify/1) to a simple device type atom.
+-spec device_type( Properties :: list() ) -> device_type().
+device_type([]) ->
+    text;
+device_type(Properties) when is_list(Properties) ->
+    case proplists:get_value(vendor, Properties) of
+        <<"desktop">> -> desktop;
+        _ -> check_tablet(Properties)
+    end.
 
-%%----------------------------------------------------------------------
-%% Func: init/1
-%% Returns: {ok, State}          |
-%%          {ok, State, Timeout} |
-%%          ignore               |
-%%          {stop, Reason}
-%%----------------------------------------------------------------------
-init([]) ->
-    {ok, #state{}}.
+    check_tablet(Ps) ->
+        case proplists:get_value(is_tablet, Ps, false) of
+            true -> tablet;
+            false -> check_phone(Ps)
+        end.
 
-%%----------------------------------------------------------------------
-%% Func: handle_call/3
-%% Returns: {reply, Reply, State}          |
-%%          {reply, Reply, State, Timeout} |
-%%          {noreply, State}               |
-%%          {noreply, State, Timeout}      |
-%%          {stop, Reason, Reply, State}   | (terminate/2 is called)
-%%          {stop, Reason, State}            (terminate/2 is called)
-%%----------------------------------------------------------------------
-handle_call(stop, _From, State) ->
-    {stop, normal, State}.
-
-%%----------------------------------------------------------------------
-%% Func: handle_cast/2
-%% Returns: {noreply, State}          |
-%%          {noreply, State, Timeout} |
-%%          {stop, Reason, State}            (terminate/2 is called)
-%%----------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%----------------------------------------------------------------------
-%% Func: handle_info/2
-%% Returns: {noreply, State}          |
-%%          {noreply, State, Timeout} |
-%%          {stop, Reason, State}            (terminate/2 is called)
-%%----------------------------------------------------------------------
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-%%----------------------------------------------------------------------
-%% Func: terminate/2
-%% Purpose: Shutdown the server
-%% Returns: any (ignored by gen_server)
-%%----------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-code_change(_, _, _) ->
-    ok.
-
-%%%----------------------------------------------------------------------
-%%% Internal functions
-%%%----------------------------------------------------------------------
-
+    % We call a phone when it can do ajax.
+    check_phone(Ps) ->
+        case proplists:get_value(ajax_support_javascript, Ps, false) of
+            true -> phone;
+            false -> text
+        end.
