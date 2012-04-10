@@ -22,7 +22,8 @@ Returns:
      {inputDevices,<<"touchscreen">>},
      {parentId,<<"genericApple">>},
      {model,<<"iPod Touch">>},
-     {vendor,<<"Apple">>}]}
+     {vendor,<<"Apple">>},
+     {id, <<"iPod">>]}
 ```
 
 This property list can be mapped to a device type with `ua_classifier:device_type/1`.
