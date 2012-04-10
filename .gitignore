@@ -7,3 +7,5 @@ coverage/*
 build
 *.xcodeproj
 .eunit/
+*.so
+*.o
