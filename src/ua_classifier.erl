@@ -60,8 +60,9 @@ classify(_UserAgent) ->
 device_type([]) ->
     text;
 device_type(Properties) when is_list(Properties) ->
-    case proplists:get_value(vendor, Properties) of
-        <<"desktop">> -> desktop;
+    case proplists:get_value(id, Properties) of
+        <<"desktopDevice">> -> desktop;
+        <<"unknown">> -> desktop;
         _ -> check_tablet(Properties)
     end.
 

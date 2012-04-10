@@ -110,27 +110,32 @@ ua_classify(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     if (!enif_inspect_iolist_as_binary(env, argv[0], &input)) {
         return enif_make_badarg(env);
     }
-    state = (ua_state *) enif_priv_data_compat(env);
     ua = (char *) enif_alloc(input.size+1);
     if (!ua) {
         return make_error(env, "out_of_memory");
     }
     memcpy(ua, input.data, input.size);
     ua[input.size] = '\0';
-    
+
     /* Find the classification in the dclass tree */
+    state = (ua_state *) enif_priv_data_compat(env);
     kvd = dclass_classify(&state->di, ua);
     enif_free(ua);
     
     /* Make a list of all key/value pairs */
     tl = enif_make_list(env, 0);
-    if (kvd && kvd->size)
-    {
-        for (i = 0; i < kvd->size; i++) {
-            hd = enif_make_tuple2(env,
-                                  make_atom(env, kvd->keys[i]),
-                                  make_value(env, kvd->values[i]));
-            tl = enif_make_list_cell(env, hd, tl);
+    if (kvd) {
+        hd = enif_make_tuple2(env,
+                              make_atom(env, "id"),
+                              make_value(env, kvd->id));
+        tl = enif_make_list_cell(env, hd, tl);
+        if (kvd->size) {
+            for (i = 0; i < kvd->size; i++) {
+                hd = enif_make_tuple2(env,
+                                      make_atom(env, kvd->keys[i]),
+                                      make_value(env, kvd->values[i]));
+                tl = enif_make_list_cell(env, hd, tl);
+            }
         }
     }
     return enif_make_tuple2(env, make_atom(env, "ok"), tl);
@@ -162,6 +167,7 @@ on_load(ErlNifEnv *env, void **priv, ERL_NIF_TERM info)
     state->filename[dtree.size] = '\0';
     
     /* Parse the dtree file, bail out on an error */
+    dclass_init_index(&state->di);
     ret = dclass_load_file(&state->di, state->filename);
     if (ret < 0) {
         enif_free(state->filename);
