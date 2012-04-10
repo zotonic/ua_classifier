@@ -402,7 +402,7 @@ static const dtree_dt_node *dtree_search_node(const dtree_dt_index *h,const dtre
     pp=n->nodes[hash];
     rflag=DTREE_DT_GETPP(h,pp);
     
-    if(rflag)
+    if(rflag && *t)
         rflag=dtree_search_node(h,rflag,t);
     
     //wildcard
