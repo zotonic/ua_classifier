@@ -52,7 +52,7 @@ init() ->
 %% @doc Check a user-agent string against the OpenDDR classifications.
 -spec classify( UserAgentString :: iolist() ) -> {ok, Properties :: list()} | {error, Reason :: term() }.
 classify(_UserAgent) ->
-    exit(ua_classifier_nif_not_loaded).
+    {error, ua_classifier_nif_not_loaded}.
 
 
 %% @doc Map a list of user-agent properties (as returned by classify/1) to a simple device type atom.
