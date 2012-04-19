@@ -19,7 +19,9 @@
 -export([
     init/0,
     classify/1,
-    device_type/1
+    device_type/1,
+    
+    test/0
 ]).
 -export_type([
     device_type/0
@@ -60,10 +62,16 @@ classify(_UserAgent) ->
 device_type([]) ->
     text;
 device_type(Properties) when is_list(Properties) ->
-    case proplists:get_value(id, Properties) of
+    case proplists:get_value(parentId, Properties) of
         <<"desktopDevice">> -> desktop;
-        <<"unknown">> -> desktop;
-        _ -> check_tablet(Properties)
+        _ ->
+            case proplists:get_value(id, Properties) of
+                <<"desktopDevice">> -> desktop;
+                <<"desktopCrawler">> -> desktop;
+                <<"unknown">> -> desktop;
+                <<"textDevice">> -> text;
+                _ -> check_tablet(Properties)
+            end
     end.
 
     check_tablet(Ps) ->
@@ -78,3 +86,35 @@ device_type(Properties) when is_list(Properties) ->
             true -> phone;
             false -> text
         end.
+
+
+%% @doc Test some known user-agent strings and the values they must return.
+-spec test() -> ok.
+test() ->
+    UAs = [
+        % Various Google bots
+        {desktop, "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"},
+        {desktop, "Googlebot/2.1 (+http://www.google.com/bot.html)"},
+        {text, "SAMSUNG-SGH-E250/1.0 Profile/MIDP-2.0 Configuration/CLDC-1.1 UP.Browser/6.2.3.3.c.1.101 (GUI) MMP/2.0 (compatible; Googlebot-Mobile/2.1; +http://www.google.com/bot.html)"},
+        {phone, "Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_1 like Mac OS X; en-us) AppleWebKit/532.9 (KHTML, like Gecko) Version/4.0.5 Mobile/8B117 Safari/6531.22.7 (compatible; Googlebot-Mobile/2.1; +http://www.google.com/bot.html)"},
+        
+        % Text devices
+        {text, "Lynx/2.8.8dev.3 libwww-FM/2.14 SSL-MM/1.4.1"},
+        
+        % Feature phone (some like to be smart)
+        {text, "Mozilla/4.0 (compatible; MSIE 5.0; Series60/2.8 Nokia6630/4.06.0 Profile/MIDP-2.0 Configuration/CLDC-1.1)"},
+        
+        % Command line tools
+        {desktop, "curl/7.8 (i386-redhat-linux-gnu) libcurl 7.8 (OpenSSL 0.9.6b) (ipv6 enabled)"},
+        
+        % Tablets
+        {tablet, "Mozilla/5.0 (iPad; U; CPU OS 3_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B334b Safari/531.21.10"},
+        {tablet, "Mozilla/5.0 (Linux; U; Android 2.2; en-us; SCH-I800 Build/FROYO) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1"},
+        {tablet, "Mozilla/5.0 (Linux; U; Android 2.2; es-es; GT-P1000 Build/FROYO) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1"}
+    ],
+    [ begin
+        {ok, Ps} = classify(UA),
+        {Type, UA} = {device_type(Ps), UA}
+      end
+      || {Type, UA} <- UAs ],
+    ok.

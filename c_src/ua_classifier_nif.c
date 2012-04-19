@@ -18,6 +18,7 @@
 #include "dclass/dclass_client.h"
 
 #include <ctype.h>
+#include <string.h>
 
 #ifdef OTP_R13B03
 #error OTP R13B03 not supported. Upgrade to R13B04 or later.
@@ -117,27 +118,38 @@ ua_classify(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     memcpy(ua, input.data, input.size);
     ua[input.size] = '\0';
 
-    /* Find the classification in the dclass tree */
-    state = (ua_state *) enif_priv_data_compat(env);
-    kvd = dclass_classify(&state->di, ua);
-    enif_free(ua);
-    
-    /* Make a list of all key/value pairs */
     tl = enif_make_list(env, 0);
-    if (kvd) {
+    
+    /* Handle some exceptions from the dClass library */
+    if (   strncmp(ua, "Lynx", 4) == 0    /* Lynx text browser */
+        || strstr(ua, "Series60/") != NULL) /* Nokia phone */
+    {
         hd = enif_make_tuple2(env,
                               make_atom(env, "id"),
-                              make_value(env, kvd->id));
+                              make_value(env, "textDevice"));
         tl = enif_make_list_cell(env, hd, tl);
-        if (kvd->size) {
-            for (i = 0; i < kvd->size; i++) {
-                hd = enif_make_tuple2(env,
-                                      make_atom(env, kvd->keys[i]),
-                                      make_value(env, kvd->values[i]));
-                tl = enif_make_list_cell(env, hd, tl);
+    } else {
+        /* Find the classification in the dclass tree */
+        state = (ua_state *) enif_priv_data_compat(env);
+        kvd = dclass_classify(&state->di, ua);
+
+        /* Make a list of all key/value pairs */
+        if (kvd) {
+            hd = enif_make_tuple2(env,
+                                  make_atom(env, "id"),
+                                  make_value(env, kvd->id));
+            tl = enif_make_list_cell(env, hd, tl);
+            if (kvd->size) {
+                for (i = 0; i < kvd->size; i++) {
+                    hd = enif_make_tuple2(env,
+                                          make_atom(env, kvd->keys[i]),
+                                          make_value(env, kvd->values[i]));
+                    tl = enif_make_list_cell(env, hd, tl);
+                }
             }
         }
     }
+    enif_free(ua);
     return enif_make_tuple2(env, make_atom(env, "ok"), tl);
 }
 
