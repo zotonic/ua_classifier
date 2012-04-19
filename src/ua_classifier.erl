@@ -69,6 +69,7 @@ device_type(Properties) when is_list(Properties) ->
                 <<"desktopDevice">> -> desktop;
                 <<"desktopCrawler">> -> desktop;
                 <<"unknown">> -> desktop;
+                <<"genericTouchPhone">> -> phone;
                 <<"textDevice">> -> text;
                 _ -> check_tablet(Properties)
             end
@@ -80,12 +81,25 @@ device_type(Properties) when is_list(Properties) ->
             false -> check_phone(Ps)
         end.
 
-    % We call a phone when it can do ajax.
+    % A device is a (smart)phone when it can do ajax and has a touch screen (or stylus)
     check_phone(Ps) ->
         case proplists:get_value(ajax_support_javascript, Ps, false) of
-            true -> phone;
+            true -> 
+                case is_touch_enabled(Ps) of
+                    true -> phone;
+                    false -> text
+                end;
             false -> text
         end.
+
+    is_touch_enabled(Ps) ->
+        case proplists:get_value(inputDevices, Ps) of
+           Ds when is_list(Ds) -> 
+                lists:member(<<"touchscreen">>, Ds) orelse lists:member(<<"stylus">>, Ds);
+           <<"touchscreen">> -> true;
+           <<"stylus">> -> true;
+           _ -> false
+       end.
 
 
 %% @doc Test some known user-agent strings and the values they must return.
@@ -103,6 +117,9 @@ test() ->
         
         % Feature phone (some like to be smart)
         {text, "Mozilla/4.0 (compatible; MSIE 5.0; Series60/2.8 Nokia6630/4.06.0 Profile/MIDP-2.0 Configuration/CLDC-1.1)"},
+        
+        % Smart phones
+        {phone, "Mozilla/4.0 (compatible; MSIE 6.0; Windows CE; IEMobile 7.11) SonyEricssonX1a/R3AA Profile/MIDP-2.0 Configuration/CLDC-1.1 UNTRUSTED/1.0"},
         
         % Command line tools
         {desktop, "curl/7.8 (i386-redhat-linux-gnu) libcurl 7.8 (OpenSSL 0.9.6b) (ipv6 enabled)"},

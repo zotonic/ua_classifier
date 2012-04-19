@@ -122,7 +122,9 @@ ua_classify(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     
     /* Handle some exceptions from the dClass library */
     if (   strncmp(ua, "Lynx", 4) == 0    /* Lynx text browser */
-        || strstr(ua, "Series60/") != NULL) /* Nokia phone */
+        || strstr(ua, "Series60/") != NULL /* Nokia phone */
+        || strstr(ua, "Series50/") != NULL /* Nokia phone */
+        )
     {
         hd = enif_make_tuple2(env,
                               make_atom(env, "id"),
