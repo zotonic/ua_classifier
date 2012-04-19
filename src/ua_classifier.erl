@@ -20,6 +20,7 @@
     init/0,
     classify/1,
     device_type/1,
+    has_pointer_device/1,
     
     test/0
 ]).
@@ -62,13 +63,11 @@ classify(_UserAgent) ->
 device_type([]) ->
     text;
 device_type(Properties) when is_list(Properties) ->
-    case proplists:get_value(parentId, Properties) of
-        <<"desktopDevice">> -> desktop;
-        _ ->
+    case is_desktop(Properties) of
+        true -> 
+            desktop;
+        false ->
             case proplists:get_value(id, Properties) of
-                <<"desktopDevice">> -> desktop;
-                <<"desktopCrawler">> -> desktop;
-                <<"unknown">> -> desktop;
                 <<"genericTouchPhone">> -> phone;
                 <<"textDevice">> -> text;
                 _ -> check_tablet(Properties)
@@ -85,21 +84,45 @@ device_type(Properties) when is_list(Properties) ->
     check_phone(Ps) ->
         case proplists:get_value(ajax_support_javascript, Ps, false) of
             true -> 
-                case is_touch_enabled(Ps) of
+                case has_pointer_device(Ps) of
                     true -> phone;
                     false -> text
                 end;
             false -> text
         end.
 
-    is_touch_enabled(Ps) ->
-        case proplists:get_value(inputDevices, Ps) of
-           Ds when is_list(Ds) -> 
-                lists:member(<<"touchscreen">>, Ds) orelse lists:member(<<"stylus">>, Ds);
-           <<"touchscreen">> -> true;
-           <<"stylus">> -> true;
-           _ -> false
-       end.
+%% @doc Check if the classified device has a pointer
+-spec has_pointer_device(list()) -> boolean().
+has_pointer_device(Ps) ->
+    case is_desktop(Ps) of
+        true ->
+            true;
+        false ->
+            case proplists:get_value(inputDevices, Ps) of
+               Ds when is_list(Ds) -> 
+                           lists:member(<<"touchscreen">>, Ds) 
+                    orelse lists:member(<<"stylus">>, Ds)
+                    orelse lists:member(<<"clickwheel">>, Ds);
+               <<"touchscreen">> -> true;
+               <<"stylus">> -> true;
+               <<"clickwheel">> -> true;
+               _ -> false
+           end
+    end.
+
+%% @doc Check if the classified device is a desktop
+is_desktop(Ps) ->
+    case proplists:get_value(parentId, Ps) of
+        <<"desktopDevice">> -> true;
+        _ ->
+            case proplists:get_value(id, Ps) of
+                <<"desktopDevice">> -> true;
+                <<"desktopCrawler">> -> true;
+                <<"unknown">> -> true;
+                _ -> false
+            end
+    end.
+
 
 
 %% @doc Test some known user-agent strings and the values they must return.
