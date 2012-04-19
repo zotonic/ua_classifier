@@ -254,14 +254,14 @@ int dtree_hash_char(char c)
         return c-'0';
     
     //configurable
-    for(i=0;i<sizeof(DTREE_HASH_PCHARS);i++)
+    for(i=0;i<sizeof(DTREE_HASH_PCHARS)-1;i++)
     {
         if(c==DTREE_HASH_PCHARS[i])
             return 36+i;
     }
     
     //configurable
-    for(i=0;i<sizeof(DTREE_HASH_SCHARS);i++)
+    for(i=0;i<sizeof(DTREE_HASH_SCHARS)-1;i++)
     {
         if(c==DTREE_HASH_SCHARS[i])
             return DTREE_HASH_SEP+i;
