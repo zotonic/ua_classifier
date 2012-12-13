@@ -17,6 +17,9 @@ distclean: clean
 test:
 	./rebar compile eunit
 
+update-dtree:
+	wget -O priv/openddr.dtree 'https://github.com/TheWeatherChannel/dClass/blob/master/dtrees/openddr.dtree?raw=true'
+
 ##
 ## Doc targets
 ##
