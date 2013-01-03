@@ -143,6 +143,7 @@ test() ->
         
         % Smart phones
         {phone, "Mozilla/4.0 (compatible; MSIE 6.0; Windows CE; IEMobile 7.11) SonyEricssonX1a/R3AA Profile/MIDP-2.0 Configuration/CLDC-1.1 UNTRUSTED/1.0"},
+        {phone, "Mozilla/5.0 (iPhone; CPU iPhone OS 6_0_1 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A523 Safari/8536.25"},
         
         % Command line tools
         {desktop, "curl/7.8 (i386-redhat-linux-gnu) libcurl 7.8 (OpenSSL 0.9.6b) (ipv6 enabled)"},
