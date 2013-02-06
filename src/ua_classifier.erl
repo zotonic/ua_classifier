@@ -46,7 +46,11 @@ init() ->
                     filename:join(Dir, "ua_classifier_nif")
             end,
     Dtree = list_to_binary(filename:join(filename:dirname(SoName), "openddr.dtree")),
-    catch erlang:load_nif(SoName, Dtree),
+    case catch erlang:load_nif(SoName, Dtree) of
+        ok -> ok;
+        LoadError -> error_logger:error_msg("ua_classifier: error loading NIF (~p): ~p", 
+                                            [SoName, LoadError])  
+    end,
     case erlang:system_info(otp_release) of
         "R13B03" -> true;
         _ -> ok
