@@ -20,13 +20,13 @@
 
 
 static long dtree_print_node(const dtree_dt_index*,const char*(*f)(void*),const dtree_dt_node*,char*,int);
-inline int dtree_node_depth(const dtree_dt_index*,const dtree_dt_node*);
+int dtree_node_depth(const dtree_dt_index*,const dtree_dt_node*);
 char *dtree_node_path(const dtree_dt_index*,const dtree_dt_node*,char*);
 void dtree_timersubn(struct timespec*,struct timespec*,struct timespec*);
 
 
 //finds a certain flag among dup nodes
-inline const dtree_dt_node *dtree_get_flag(const dtree_dt_index *h,const dtree_dt_node *n,flag_f flag)
+const dtree_dt_node *dtree_get_flag(const dtree_dt_index *h,const dtree_dt_node *n,flag_f flag)
 {
     packed_ptr pp=n->curr;
     
