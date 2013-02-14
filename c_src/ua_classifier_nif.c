@@ -79,7 +79,7 @@ make_binary_string(ErlNifEnv *env, const char *s)
 
 
 static ERL_NIF_TERM
-make_value(ErlNifEnv *env, const char *s)
+make_value(ErlNifEnv *env, const char *key, const char *s)
 {
     if (strcmp(s, "false") == 0) {
         return make_atom(env, "false");
@@ -87,7 +87,9 @@ make_value(ErlNifEnv *env, const char *s)
     if (strcmp(s, "true") == 0) {
         return make_atom(env, "true");
     }
-    if (is_number(s)) {
+    if (   is_number(s)
+        && strcmp(key, "id")
+        && strcmp(key, "model")) {
         return enif_make_int(env, atoi(s));
     }
     return make_binary_string(env, s);
@@ -128,7 +130,7 @@ ua_classify(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     {
         hd = enif_make_tuple2(env,
                               make_atom(env, "id"),
-                              make_value(env, "textDevice"));
+                              make_value(env, "id", "textDevice"));
         tl = enif_make_list_cell(env, hd, tl);
     } else {
         /* Find the classification in the dclass tree */
@@ -139,13 +141,13 @@ ua_classify(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
         if (kvd) {
             hd = enif_make_tuple2(env,
                                   make_atom(env, "id"),
-                                  make_value(env, kvd->id));
+                                  make_value(env, "id", kvd->id));
             tl = enif_make_list_cell(env, hd, tl);
             if (kvd->size) {
                 for (i = 0; i < kvd->size; i++) {
                     hd = enif_make_tuple2(env,
                                           make_atom(env, kvd->keys[i]),
-                                          make_value(env, kvd->values[i]));
+                                          make_value(env, kvd->keys[i], kvd->values[i]));
                     tl = enif_make_list_cell(env, hd, tl);
                 }
             }
