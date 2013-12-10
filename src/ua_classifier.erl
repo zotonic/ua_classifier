@@ -30,7 +30,7 @@
 
 -on_load(init/0).
 
--type device_type() :: text | phone | table | desktop.
+-type device_type() :: text | phone | tablet | desktop.
 
 -spec init() -> true | ok.
 init() ->
