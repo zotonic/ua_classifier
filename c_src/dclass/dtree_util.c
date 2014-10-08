@@ -1,5 +1,6 @@
 /*
  * Copyright 2012 The Weather Channel
+ * Copyright 2013 Reza Naghibi
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,19 +21,20 @@
 
 
 static long dtree_print_node(const dtree_dt_index*,const char*(*f)(void*),const dtree_dt_node*,char*,int);
-int dtree_node_depth(const dtree_dt_index*,const dtree_dt_node*);
+extern int dtree_node_depth(const dtree_dt_index*,const dtree_dt_node*);
 char *dtree_node_path(const dtree_dt_index*,const dtree_dt_node*,char*);
 void dtree_timersubn(struct timespec*,struct timespec*,struct timespec*);
+int dtree_gettime(struct timespec*);
 
 
 //finds a certain flag among dup nodes
-const dtree_dt_node *dtree_get_flag(const dtree_dt_index *h,const dtree_dt_node *n,flag_f flag)
+const dtree_dt_node *dtree_get_flag(const dtree_dt_index *h,const dtree_dt_node *n,dtree_flag_f flag,dtree_pos_f pos)
 {
     packed_ptr pp=n->curr;
     
     while(pp)
     {
-        if(n->flags & flag)
+        if(n->flags & flag && (!n->pos || !pos || n->pos==pos))
             return n;
         
         pp=n->dup;
@@ -43,25 +45,30 @@ const dtree_dt_node *dtree_get_flag(const dtree_dt_index *h,const dtree_dt_node 
 }
 
 //finds a certain flag among dup nodes
-flag_f dtree_get_flags(const dtree_dt_index *h,const dtree_dt_node *n)
+dtree_flag_f dtree_get_flags(const dtree_dt_index *h,const dtree_dt_node *n,dtree_pos_f pos)
 {
+    dtree_flag_f f;
     packed_ptr pp;
     
     if(n)
     {
+        f=0;
         pp=n->dup;
+
+        if(!n->pos || !pos || n->pos==pos)
+            f=n->flags;
         
         if(pp)
-            return n->flags | dtree_get_flags(h,DTREE_DT_GETPP(h,pp));
+            return f | dtree_get_flags(h,DTREE_DT_GETPP(h,pp),pos);
         else
-            return n->flags;
+            return f;
     }
     else
         return 0;
 }
 
 //gets the depth of the current node
-inline int dtree_node_depth(const dtree_dt_index *h,const dtree_dt_node *n)
+int dtree_node_depth(const dtree_dt_index *h,const dtree_dt_node *n)
 {
     int d=0;
     packed_ptr pp;
@@ -127,7 +134,7 @@ static long dtree_print_node(const dtree_dt_index *h,const char* (*f)(void*),con
     packed_ptr pp;
     const dtree_dt_node *dupn;
     
-    if(!n || depth>(DTREE_DATA_BUFLEN-1))
+    if(!n || !n->curr || depth>(DTREE_DATA_BUFLEN-1))
         return 0;
     
     path[depth]=n->data;
@@ -210,3 +217,16 @@ void dtree_timersubn(struct timespec *end,struct timespec *start,struct timespec
       r->tv_nsec+=(1000*1000*1000);
     }
 }
+
+//get timestamp
+int dtree_gettime(struct timespec *ts)
+{
+#if defined(_DTREE_NO_TIMESPEC) || defined(__MACH__)
+    ts->tv_sec=0;
+    ts->tv_nsec=0;
+    return 0;
+#else
+    return clock_gettime(CLOCK_REALTIME,ts);
+#endif
+}
+

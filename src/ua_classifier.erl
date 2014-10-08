@@ -136,8 +136,10 @@ test() ->
         % Various Google bots
         {desktop, "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"},
         {desktop, "Googlebot/2.1 (+http://www.google.com/bot.html)"},
-        {text, "SAMSUNG-SGH-E250/1.0 Profile/MIDP-2.0 Configuration/CLDC-1.1 UP.Browser/6.2.3.3.c.1.101 (GUI) MMP/2.0 (compatible; Googlebot-Mobile/2.1; +http://www.google.com/bot.html)"},
+        {phone, "Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5376e Safari/8536.25 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"},
         {phone, "Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_1 like Mac OS X; en-us) AppleWebKit/532.9 (KHTML, like Gecko) Version/4.0.5 Mobile/8B117 Safari/6531.22.7 (compatible; Googlebot-Mobile/2.1; +http://www.google.com/bot.html)"},
+        {desktop, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko; Google Web Preview) Chrome/27.0.1453 Safari/537.36"},
+
         
         % Text devices
         {text, "Lynx/2.8.8dev.3 libwww-FM/2.14 SSL-MM/1.4.1"},

@@ -1,5 +1,6 @@
 /*
  * Copyright 2012 The Weather Channel
+ * Copyright 2013 Reza Naghibi
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +25,8 @@ static const char *openddr_key_array[] = OPENDDR_KEYS;
 
 
 static int openddr_read_device_raw(FILE*,dtree_dt_index*,dtree_dt_index*);
-static int openddr_read_pattern(FILE*,dtree_dt_index*,dtree_dt_index*,flag_f*);
-static int openddr_add_device_pattern(dtree_dt_index*,dtree_dt_index*,dclass_keyvalue*,dclass_keyvalue*,char*,flag_f);
+static int openddr_read_pattern(FILE*,dtree_dt_index*,dtree_dt_index*,dtree_flag_f*);
+static int openddr_add_device_pattern(dtree_dt_index*,dtree_dt_index*,dclass_keyvalue*,dclass_keyvalue*,char*,dtree_flag_f);
 static const char *openddr_copy_string(dtree_dt_index*,const char*,const char*);
 static int openddr_alloc_kvd(dtree_dt_index*,dtree_dt_index*,char*);
 static char *openddr_get_attr(const char*,const char*,dtree_dt_index*,char**,char*);
@@ -49,7 +50,7 @@ int openddr_load_resources(dclass_index *di,const char *path)
     int pcount=0;
     char fpath[1024];
     FILE *f=NULL;
-    flag_f flags=0;
+    dtree_flag_f flags=0;
     dtree_dt_index dev;
     dtree_dt_index *h=&di->dti;
 
@@ -59,7 +60,7 @@ int openddr_load_resources(dclass_index *di,const char *path)
     h->sflags=DTREE_S_FLAG_REGEX|DTREE_S_FLAG_DUPS;
     
     //string and device cache
-    dtree_alloc_string(h,"unknown",7);
+    di->error.id=dtree_alloc_string(h,"unknown",7);
     
     if(!openddr_alloc_kvd(h,&dev,"genericPhone") || !openddr_alloc_kvd(h,&dev,"genericTouchPhone") ||
             !openddr_alloc_kvd(h,&dev,"desktopDevice"))
@@ -141,6 +142,8 @@ dexit:
         fclose(f);
 
     dtree_free(&dev);
+    dtree_free(h);
+    dclass_init_index(di);
     
     return -1;
 }
@@ -153,6 +156,7 @@ static int openddr_read_device_raw(FILE *f,dtree_dt_index *h,dtree_dt_index *dev
     char buf[1048];
     char temp[DTREE_DATA_BUFLEN];
     dclass_keyvalue *kvd=NULL;
+    dtree_dt_add_entry entry;
     
     if(!f)
         return 0;
@@ -224,8 +228,12 @@ static int openddr_read_device_raw(FILE *f,dtree_dt_index *h,dtree_dt_index *dev
                 dtree_printd(DTREE_PRINT_INITDTREE,"%s: '%s' ",kvd->keys[i],kvd->values[i]);
         dtree_printd(DTREE_PRINT_INITDTREE,"\n");
 
+        memset(&entry,0,sizeof(dtree_dt_add_entry));
+
+        entry.data=kvd;
+
         //add to device tree
-        if(dtree_add_entry(dev,kvd->id,kvd,0,NULL)<0)
+        if(dtree_add_entry(dev,kvd->id,&entry)<0)
             return -1;
     }
     
@@ -233,7 +241,7 @@ static int openddr_read_device_raw(FILE *f,dtree_dt_index *h,dtree_dt_index *dev
 }
 
 //read a pattern from file, insert it
-static int openddr_read_pattern(FILE *f,dtree_dt_index *h,dtree_dt_index *dev,flag_f *flags)
+static int openddr_read_pattern(FILE *f,dtree_dt_index *h,dtree_dt_index *dev,dtree_flag_f *flags)
 {
     int ret=0;
     char buf[1048];
@@ -241,9 +249,11 @@ static int openddr_read_pattern(FILE *f,dtree_dt_index *h,dtree_dt_index *dev,fl
     char id[DTREE_DATA_BUFLEN];
     dclass_keyvalue *der=NULL;
     dclass_keyvalue *chain=NULL;
+    const dtree_dt_node *base;
     
 #if OPENDDR_BLKBRY_FIX
-    flag_f bb_flag;
+    dtree_flag_f bb_flag;
+    dclass_keyvalue *bb_chain;
 #endif
     
     if(!f)
@@ -267,8 +277,16 @@ static int openddr_read_pattern(FILE *f,dtree_dt_index *h,dtree_dt_index *dev,fl
             
             continue;
         }
-        
-        if(strstr(buf,"<device "))
+
+        if(!h->comment && strstr(buf,"<ver>"))
+        {
+            openddr_get_value(buf,"ver",NULL,NULL,pattern);
+            sprintf(buf,OPENDDR_COMMENT,pattern);
+            h->comment=dtree_alloc_mem(h,(strlen(buf)+1)*sizeof(char));
+            if(h->comment)
+                strncpy(h->comment,buf,strlen(buf));
+        }
+        else if(strstr(buf,"<device "))
         {
             openddr_get_attr(buf,"id",NULL,NULL,id);
             
@@ -297,17 +315,24 @@ static int openddr_read_pattern(FILE *f,dtree_dt_index *h,dtree_dt_index *dev,fl
             
             if(!chain && *flags & DTREE_DT_FLAG_CHAIN)
             {
-                //look for base chain
+                dtree_printd(DTREE_PRINT_INITDTREE,"OpenDDR CHAIN PATTERN: '%s' id: '%s'\n",pattern,der->id);
+
                 chain=(dclass_keyvalue*)dtree_get(h,pattern,DTREE_DT_FLAG_BCHAIN);
 
                 //TODO need to iterate thru regex and add all possible chain values
                 if(!chain)
-                    chain=(dclass_keyvalue*)dtree_get(h,openddr_unregex(pattern,id),DTREE_DT_FLAG_BCHAIN);
+                {
+                    dtree_printd(DTREE_PRINT_INITDTREE,"OpenDDR ALT CHAIN PATTERN: '%s' id: '%s'\n",openddr_unregex(pattern,id),der->id);
 
-                //this pattern exists
+                    base=dtree_get_node(h,openddr_unregex(pattern,id),0,0);
+
+                    if(base && (base=dtree_get_flag(h,base,DTREE_DT_FLAG_BCHAIN,0)))
+                        chain=base->payload;
+                }
+
                 if(chain)
                 {
-                    dtree_printd(DTREE_PRINT_INITDTREE,"OpenDDR DUP CHAIN PATTERN: '%s' id: '%s'\n",pattern,der->id);
+                    dtree_printd(DTREE_PRINT_INITDTREE,"OpenDDR FOUND DUP CHAIN PATTERN: '%s' id: '%s' (%s)\n",pattern,der->id,chain->id);
 
                     continue;
                 }
@@ -315,11 +340,13 @@ static int openddr_read_pattern(FILE *f,dtree_dt_index *h,dtree_dt_index *dev,fl
             
 #if OPENDDR_BLKBRY_FIX
             bb_flag=*flags;
+            bb_chain=chain;
             
             if(!strncasecmp(der->id,"blackberry",10) && chain && (*flags & DTREE_DT_FLAG_CHAIN))
             {
                 *flags=0;
-                
+                chain=NULL;
+
                 openddr_convert_bb(pattern);
             }
 #endif
@@ -329,6 +356,7 @@ static int openddr_read_pattern(FILE *f,dtree_dt_index *h,dtree_dt_index *dev,fl
             
 #if OPENDDR_BLKBRY_FIX
             *flags=bb_flag;
+            chain=bb_chain;
 #endif
 
             if(*flags & DTREE_DT_FLAG_CHAIN)
@@ -340,9 +368,10 @@ static int openddr_read_pattern(FILE *f,dtree_dt_index *h,dtree_dt_index *dev,fl
 }
 
 //adds a device pattern to the root tree
-static int openddr_add_device_pattern(dtree_dt_index *h,dtree_dt_index *dev,dclass_keyvalue *der,dclass_keyvalue *chain,char *pattern,flag_f flags)
+static int openddr_add_device_pattern(dtree_dt_index *h,dtree_dt_index *dev,dclass_keyvalue *der,dclass_keyvalue *chain,char *pattern,dtree_flag_f flags)
 {
     int i;
+    dtree_dt_add_entry entry;
     
     //chain pattern
     if((flags & DTREE_DT_FLAG_CHAIN))
@@ -359,14 +388,21 @@ static int openddr_add_device_pattern(dtree_dt_index *h,dtree_dt_index *dev,dcla
         if(!der->values[i])
             der->values[i]=openddr_copy_string(dev,dclass_get_kvalue(der,"parentId"),der->keys[i]);
     }
+
+    memset(&entry,0,sizeof(dtree_dt_add_entry));
+
+    entry.data=der;
+    entry.flags=flags;
+    entry.param=chain;
     
-    return dtree_add_entry(h,pattern,der,flags,chain);
+    return dtree_add_entry(h,pattern,&entry);
 }
 
 //alloc a device kvd
 static int openddr_alloc_kvd(dtree_dt_index *h,dtree_dt_index *dev,char *id)
 {
     dclass_keyvalue *kvd;
+    dtree_dt_add_entry entry;
     
     kvd=(dclass_keyvalue*)dtree_alloc_mem(h,sizeof(dclass_keyvalue));
     
@@ -374,8 +410,12 @@ static int openddr_alloc_kvd(dtree_dt_index *h,dtree_dt_index *dev,char *id)
         return 0;
     
     kvd->id=dtree_alloc_string(h,id,strlen(id));
+
+    memset(&entry,0,sizeof(dtree_dt_add_entry));
+
+    entry.data=kvd;
     
-    dtree_add_entry(dev,kvd->id,kvd,0,NULL);
+    dtree_add_entry(dev,kvd->id,&entry);
     
     return 1;
 }
@@ -517,7 +557,8 @@ static char *openddr_unregex(const char *s,char *dest)
             h=0;
             continue;
         }
-        else if(*s==DTREE_PATTERN_OPTIONAL)
+        else if(*s==DTREE_PATTERN_OPTIONAL || *s==DTREE_PATTERN_BEGIN || *s==DTREE_PATTERN_END ||
+            *s==DTREE_PATTERN_GROUP_S || *s==DTREE_PATTERN_GROUP_E || *s==DTREE_PATTERN_ESCAPE)
         {
             s++;
             continue;

@@ -1,5 +1,6 @@
 /*
  * Copyright 2012 The Weather Channel
+ * Copyright 2013 Reza Naghibi
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +17,8 @@
  */
 
 
-#ifndef _WX_OPENDDR_CLIENT_H
-#define	_WX_OPENDDR_CLIENT_H
+#ifndef _DCLASS_OPENDDR_CLIENT_H
+#define _DCLASS_OPENDDR_CLIENT_H
 
 
 #include "dtree_client.h"
@@ -31,6 +32,9 @@
 #define OPENDDR_RSRC_BDP      "BuilderDataSourcePatch.xml"
 
 
+#define OPENDDR_COMMENT       "OpenDDR %s http://www.openddr.org (device detection ddr)"
+
+
 #define OPENDDR_KEYS          {                            \
                                 "vendor",                  \
                                 "model",                   \
@@ -41,7 +45,9 @@
                                 "device_os",               \
                                 "ajax_support_javascript", \
                                 "is_tablet",               \
-                                "is_wireless_device"       \
+                                "is_wireless_device",      \
+                                "is_crawler",              \
+                                "is_desktop"               \
                               }
 
 
@@ -52,5 +58,5 @@ int openddr_load_resources(dclass_index*,const char*);
 #define OPENDDR_BLKBRY_FIX    1
 
 
-#endif	/* _WX_OPENDDR_CLIENT_H */
+#endif	/* _DCLASS_OPENDDR_CLIENT_H */
 

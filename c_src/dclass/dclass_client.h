@@ -1,5 +1,6 @@
 /*
  * Copyright 2012 The Weather Channel
+ * Copyright 2013 Reza Naghibi
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +17,14 @@
  */
 
 
-#ifndef _WX_DCLASS_H_INCLUDED_
-#define _WX_DCLASS_H_INCLUDED_
+#ifndef _DCLASS_H_INCLUDED_
+#define _DCLASS_H_INCLUDED_
 
 
 #include "dtree_client.h"
 
 
-#define DCLASS_VERSION    "dClass 2.0.4"
+#define DCLASS_VERSION    "dClass 2.2.10"
 
 
 //key value struct, dtree payload
@@ -58,6 +59,7 @@ int dclass_load_file(dclass_index*,const char*);
 int dclass_write_file(const dclass_index*,const char*);
 
 const dclass_keyvalue *dclass_classify(const dclass_index*,const char*);
+const dclass_keyvalue *dclass_get(const dclass_index*,const char*);
 const char *dclass_get_kvalue(const dclass_keyvalue*,const char*);
 
 void dclass_free(dclass_index*);
@@ -67,4 +69,4 @@ const char *dclass_get_id(void*);
 const char *dclass_get_version();
 
 
-#endif	/* _WX_DCLASS_H_INCLUDED_ */
+#endif	/* _DCLASS_H_INCLUDED_ */
