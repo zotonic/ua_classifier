@@ -19,6 +19,7 @@
 -export([
     init/0,
     classify/1,
+    browser_classify/1,
     device_type/1,
     has_pointer_device/1,
     
@@ -45,8 +46,9 @@ init() ->
                 Dir ->
                     filename:join(Dir, "ua_classifier_nif")
             end,
-    Dtree = list_to_binary(filename:join(filename:dirname(SoName), "openddr.dtree")),
-    case catch erlang:load_nif(SoName, Dtree) of
+    Dtree = filename("openddr.dtree", SoName),
+    Btree = filename("browser.dtree", SoName),
+    case catch erlang:load_nif(SoName, {Dtree, Btree}) of
         ok -> ok;
         LoadError -> error_logger:error_msg("ua_classifier: error loading NIF (~p): ~p", 
                                             [SoName, LoadError])  
@@ -56,9 +58,17 @@ init() ->
         _ -> ok
     end.
 
+
+
 %% @doc Check a user-agent string against the OpenDDR classifications.
 -spec classify( UserAgentString :: iolist() ) -> {ok, Properties :: list()} | {error, Reason :: term() }.
 classify(_UserAgent) ->
+    {error, ua_classifier_nif_not_loaded}.
+
+
+%% @doc Check a user-agent string against the OpenDDR Browser classifications.
+-spec browser_classify( UserAgentString :: iolist() ) -> {ok, Properties :: list()} | {error, Reason :: term() }.
+browser_classify(_UserAgent) ->
     {error, ua_classifier_nif_not_loaded}.
 
 
@@ -127,6 +137,12 @@ is_desktop(Ps) ->
             end
     end.
 
+%% 
+%% Helpers
+%%
+
+filename(Name, SoName) ->
+    list_to_binary(filename:join(filename:dirname(SoName), Name)).
 
 
 %% @doc Test some known user-agent strings and the values they must return.
@@ -164,4 +180,6 @@ test() ->
         {Type, UA} = {device_type(Ps), UA}
       end
       || {Type, UA} <- UAs ],
+
+
     ok.

@@ -26,8 +26,8 @@
 
 
 typedef struct {
-    char *filename;
     dclass_index di;
+    dclass_index bi;
 } ua_state;
 
 
@@ -57,12 +57,6 @@ make_atom(ErlNifEnv *env, const char *name)
     return enif_make_atom(env, name);
 }
 
-static ERL_NIF_TERM 
-make_error(ErlNifEnv *env, const char *mesg)
-{
-    ERL_NIF_TERM error = make_atom(env, "error");
-    return enif_make_tuple2(env, error, make_atom(env, mesg));
-}
 
 static ERL_NIF_TERM
 make_binary_string(ErlNifEnv *env, const char *s)
@@ -95,6 +89,38 @@ make_value(ErlNifEnv *env, const char *key, const char *s)
     return make_binary_string(env, s);
 }
 
+static ERL_NIF_TERM 
+ua_do_classify(ErlNifEnv *env, dclass_index *index, char *ua, ERL_NIF_TERM tl)
+{
+    const dclass_keyvalue *kvd;
+    ERL_NIF_TERM hd;
+    int i;
+
+    kvd = dclass_classify(index, ua);
+
+    if(!kvd) 
+        return tl;
+
+    /* Make a list of all key/value pairs */
+    hd = enif_make_tuple2(env, make_atom(env, "id"), make_value(env, "id", kvd->id));
+    tl = enif_make_list_cell(env, hd, tl);
+    for (i = 0; i < kvd->size; i++) {
+        hd = enif_make_tuple2(env,
+                make_atom(env, kvd->keys[i]),
+                make_value(env, kvd->keys[i], kvd->values[i]));
+        tl = enif_make_list_cell(env, hd, tl);
+    }
+
+    return tl;
+}
+
+static ERL_NIF_TERM
+make_eos(ErlNifEnv *env, const ERL_NIF_TERM iolist) 
+{
+    ERL_NIF_TERM eos = enif_make_int(env, 0);
+    return enif_make_list2(env, iolist, eos);
+}
+
 
 static ERL_NIF_TERM 
 ua_classify(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
@@ -102,24 +128,18 @@ ua_classify(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     ErlNifBinary input;
     ua_state *state;
     char *ua;
-    const dclass_keyvalue *kvd;
     ERL_NIF_TERM hd;
     ERL_NIF_TERM tl;
-    int i;
     
     if (argc != 1) {
         return enif_make_badarg(env);
     }
-    if (!enif_inspect_iolist_as_binary(env, argv[0], &input)) {
+
+    if (!enif_inspect_iolist_as_binary(env, make_eos(env, argv[0]), &input)) {
         return enif_make_badarg(env);
     }
-    ua = (char *) enif_alloc(input.size+1);
-    if (!ua) {
-        return make_error(env, "out_of_memory");
-    }
-    memcpy(ua, input.data, input.size);
-    ua[input.size] = '\0';
 
+    ua = (char *) input.data;
     tl = enif_make_list(env, 0);
     
     /* Handle some exceptions from the dClass library */
@@ -135,27 +155,39 @@ ua_classify(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     } else {
         /* Find the classification in the dclass tree */
         state = (ua_state *) enif_priv_data_compat(env);
-        kvd = dclass_classify(&state->di, ua);
-
-        /* Make a list of all key/value pairs */
-        if (kvd) {
-            hd = enif_make_tuple2(env,
-                                  make_atom(env, "id"),
-                                  make_value(env, "id", kvd->id));
-            tl = enif_make_list_cell(env, hd, tl);
-            if (kvd->size) {
-                for (i = 0; i < kvd->size; i++) {
-                    hd = enif_make_tuple2(env,
-                                          make_atom(env, kvd->keys[i]),
-                                          make_value(env, kvd->keys[i], kvd->values[i]));
-                    tl = enif_make_list_cell(env, hd, tl);
-                }
-            }
-        }
+        tl = ua_do_classify(env, &state->di, ua, tl);
     }
-    enif_free(ua);
+
     return enif_make_tuple2(env, make_atom(env, "ok"), tl);
 }
+
+
+static ERL_NIF_TERM 
+ua_browser_classify(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    ErlNifBinary input;
+    ua_state *state;
+    char *ua;
+    ERL_NIF_TERM tl;
+    
+    if (argc != 1) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_inspect_iolist_as_binary(env, make_eos(env, argv[0]), &input)) {
+        return enif_make_badarg(env);
+    }
+
+    /* Get ua string */
+    ua = (char *) input.data;
+
+    /* Find the classification in the dclass browser tree */
+    state = (ua_state *) enif_priv_data_compat(env);
+    tl = ua_do_classify(env, &state->bi, ua, enif_make_list(env, 0));
+
+    return enif_make_tuple2(env, make_atom(env, "ok"), tl);
+}
+
 
 
 static int
@@ -164,8 +196,23 @@ on_load(ErlNifEnv *env, void **priv, ERL_NIF_TERM info)
     int ret;
     ua_state *state;
     ErlNifBinary dtree;
+    ErlNifBinary btree;
+    int arity;
+    const ERL_NIF_TERM* tuple;
+
+    if(!enif_get_tuple(env, info, &arity, &tuple)) {
+        return enif_make_badarg(env);
+    }
+
+    if(arity != 2) {
+        return enif_make_badarg(env);
+    }
     
-    if(!enif_inspect_binary(env, info, &dtree)) {
+    if(!enif_inspect_iolist_as_binary(env, make_eos(env, tuple[0]), &dtree)) {
+        return enif_make_badarg(env);
+    }
+
+    if(!enif_inspect_iolist_as_binary(env, make_eos(env, tuple[1]), &btree)) {
         return enif_make_badarg(env);
     }
     
@@ -174,22 +221,24 @@ on_load(ErlNifEnv *env, void **priv, ERL_NIF_TERM info)
     if (!state) {
         return enif_make_badarg(env); 
     }
-    state->filename = enif_alloc(dtree.size + 1);
-    if (state->filename == NULL) {
-        enif_free(state);
-        return enif_make_badarg(env); 
-    }
-    memcpy(state->filename, dtree.data, dtree.size);
-    state->filename[dtree.size] = '\0';
-    
+
     /* Parse the dtree file, bail out on an error */
     dclass_init_index(&state->di);
-    ret = dclass_load_file(&state->di, state->filename);
+    ret = dclass_load_file(&state->di, (char *) dtree.data);
     if (ret < 0) {
-        enif_free(state->filename);
         enif_free(state);
         return enif_make_badarg(env); 
     }
+
+    /* Parse the browser dtree file, bail out on an error */
+    dclass_init_index(&state->bi);
+    ret = dclass_load_file(&state->bi, (char *) btree.data);
+    if (ret < 0) {
+        dclass_free(&state->di);
+        enif_free(state);
+        return enif_make_badarg(env); 
+    }
+
     /* Keep the dtree as priv data */
     *priv = (void *) state;
     return 0;
@@ -210,16 +259,15 @@ on_unload(ErlNifEnv *env, void *priv)
     
     state = (ua_state *) priv;
     dclass_free(&state->di);
-    enif_free(state->filename);
+    dclass_free(&state->bi);
     enif_free(state);
 }
 
 
 static ErlNifFunc nif_functions[] = {
-    {"classify", 1, ua_classify}
+    {"classify", 1, ua_classify},
+    {"browser_classify", 1, ua_browser_classify}
 };
 
 ERL_NIF_INIT(ua_classifier, nif_functions, &on_load, NULL, &on_upgrade, &on_unload);
-
-
 
