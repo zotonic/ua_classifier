@@ -1,3 +1,4 @@
+_build
 *.swp
 *.beam
 erl_crash.dump
@@ -9,3 +10,4 @@ build
 .eunit/
 *.so
 *.o
+*.d

@@ -1,12 +1,15 @@
 {application, ua_classifier,
  [
-  {description, "User Agent Classifier - NIF for WeatherChannel dClass"},
-  {vsn, "0.1"},
+  {description, "Erlang User Agent Classifier - NIF for WeatherChannel dClass"},
+  {vsn, "1.0.0"},
   {registered, []},
   {applications, [
-                    kernel, 
-                    stdlib
+                  kernel, 
+                  stdlib
                  ]},
   {env, []},
-  {modules, [ua_classifier]}
-]}.
+  {modules, [ua_classifier]},
+  {maintainers, ["Arjan Scherpenisse", "Marc Worrell"]},
+  {licenses, ["Apache 2"]},
+  {links, [{"Github", "https://github.com/zotonic/ua_classifier"}]}
+ ]}.
