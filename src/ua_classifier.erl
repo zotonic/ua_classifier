@@ -61,15 +61,15 @@ init() ->
 
 
 %% @doc Check a user-agent string against the OpenDDR classifications.
--spec classify( UserAgentString :: iolist() ) -> {ok, Properties :: list()} | {error, Reason :: term() }.
+-spec classify( UserAgentString :: iolist() ) -> {ok, Properties :: list()} | no_return().
 classify(_UserAgent) ->
-    {error, ua_classifier_nif_not_loaded}.
+    erlang:nif_error(ua_classifier_nif_not_loaded).
 
 
 %% @doc Check a user-agent string against the OpenDDR Browser classifications.
--spec browser_classify( UserAgentString :: iolist() ) -> {ok, Properties :: list()} | {error, Reason :: term() }.
+-spec browser_classify( UserAgentString :: iolist() ) -> {ok, Properties :: list()} | no_return().
 browser_classify(_UserAgent) ->
-    {error, ua_classifier_nif_not_loaded}.
+    erlang:nif_error(ua_classifier_nif_not_loaded).
 
 
 %% @doc Map a list of user-agent properties (as returned by classify/1) to a simple device type atom.
