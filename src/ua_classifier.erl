@@ -61,13 +61,13 @@ init() ->
 
 
 %% @doc Check a user-agent string against the OpenDDR classifications.
--spec classify( UserAgentString :: iolist() ) -> {ok, Properties :: list()} | no_return().
+-spec classify( UserAgentString :: iodata() ) -> {ok, Properties :: list()} | no_return().
 classify(_UserAgent) ->
     erlang:nif_error(ua_classifier_nif_not_loaded).
 
 
 %% @doc Check a user-agent string against the OpenDDR Browser classifications.
--spec browser_classify( UserAgentString :: iolist() ) -> {ok, Properties :: list()} | no_return().
+-spec browser_classify( UserAgentString :: iodata() ) -> {ok, Properties :: list()} | no_return().
 browser_classify(_UserAgent) ->
     erlang:nif_error(ua_classifier_nif_not_loaded).
 
