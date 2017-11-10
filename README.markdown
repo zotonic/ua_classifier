@@ -1,4 +1,4 @@
-lser-Agent classification using TheWeatherChannel's dClass and OpenDDR
+User-Agent classification using TheWeatherChannel's dClass and OpenDDR
 ======================================================================
 
 An implementation of the user agent classification library [dClass by TheWeatherChannel](https://github.com/TheWeatherChannel/dClass) using an Erlang NIF.
