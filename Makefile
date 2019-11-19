@@ -21,5 +21,8 @@ clean:
 	chmod +x ./rebar3
 
 update-dtree:
-	wget -O priv/openddr.dtree 'https://github.com/TheWeatherChannel/dClass/blob/master/dtrees/openddr.dtree?raw=true'
+	curl 'https://raw.githubusercontent.com/openx/dClass/master/dtrees/devicemap.dtree' > priv/openddr.dtree
+	curl 'https://raw.githubusercontent.com/openx/dClass/master/dtrees/browser.dtree' > priv/browser.dtree
+
+#	wget -O priv/openddr.dtree 'https://github.com/TheWeatherChannel/dClass/blob/master/dtrees/openddr.dtree?raw=true'
 

@@ -11,3 +11,4 @@ build
 *.so
 *.o
 *.d
+rebar3

@@ -130,6 +130,7 @@ is_desktop(Ps) ->
         <<"desktopDevice">> -> true;
         _ ->
             case proplists:get_value(id, Ps) of
+                <<"genericWebBot">> -> true;
                 <<"desktopDevice">> -> true;
                 <<"desktopCrawler">> -> true;
                 <<"unknown">> -> true;
